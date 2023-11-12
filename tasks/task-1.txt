@@ -1,0 +1,22 @@
+==============Task-1==================
+hadoop fs -mkdir project_input
+hadoop fs -copyFromLocal /home/itv009314/project/batch_dataset/card_transactions_recent.csv project_input
+hadoop fs -ls project_input
+
+
+===========cloudera==================================
+hadoop fs -mkdir project_input_hdfs
+hadoop fs -copyFromLocal /home/cloudera/Desktop/project_input_local/card_transactions_recent.csv project_input_hdfs
+hadoop fs -copyFromLocal /home/cloudera/Desktop/project_input_local/cardmembers.csv project_input_hdfs
+hadoop fs -copyFromLocal /home/cloudera/Desktop/project_input_local/memberscore.csv project_input_hdfs
+
+
+
+hadoop fs -mkdir project_input
+hadoop fs -copyFromLocal /home/itv009314/project/batch_dataset/card_transactions_recent.csv project_input
+hadoop fs -ls project_input
+
+
+hadoop fs -copyFromLocal /home/itv009314/project/batch_dataset/cardmembers.csv project_input
+
+hadoop fs -copyFromLocal /home/itv009314/project/batch_dataset/memberscore.csv project_input

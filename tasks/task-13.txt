@@ -1,0 +1,49 @@
+cd Downloads/eclipse
+./eclipse -clean
+
+
+spark-submit \
+--class classReadFromKafka \
+--master local[2] \
+--conf spark.ui.port=0 \
+--conf spark.sql.warehouse.dir=/user/itv009314/warehouse \
+--jars "real_time_project/HBase_Jars-master/*,real_time_project/DistanceFinderJar/*,real_time_project/kafka-spark_dep/*" \
+real_time_project/streaming_thin.jar
+
+
+---Start Kafka
+cd Softwares
+
+cd kafka_2.12-2.6.0
+
+cd /home/cloudera/Desktop/Softwares/kafka_2.12-2.6.0/bin./kafka-server-start.sh ../config/server.properties
+
+--Create Topic(In a new terminal)
+cd /home/cloudera/Desktop/Softwares/kafka_2.12-2.6.0/bin
+./kafka-topics.sh --create --topic cctxnstopic --bootstrap-server localhost:9092 --partitions 1
+
+kafka-topics.sh --create --topic cctxnstopicitv009314  --zookeeper m01.itversity.com:2181,m02.itversity.com:2181,w01.itversity.com:2181,g01.itversity.com:2181 --replication-factor 1 --partitions 1
+
+kafka-topics.sh --create --topic cctxnstopicitv009314  --bootstrap-server b-3.kafkacluster.9xf9xc.c4.kafka.eu-north-1.amazonaws.com:9092 --replication-factor 1 --partitions 1
+
+
+
+-Kafka Producer
+kafka-console-producer.sh --broker-list m01.itversity.com:9092,w01.itversity.com:9092,g01.itversity.com:9092 --topic cctxnstopicitv009314
+
+--Sample records to pass
+//genuine
+{"card_id":555059812846420,"member_id":6460955484292953,"amount":9000,"pos_id":4444,"post_code":10537,"transc_dt":"2021-03-09 07:28:43"}
+//fraud
+{"card_id":555059812846420,"member_id":6460955484292953,"amount":9000000000,"pos_id":4444,"post_code":10537,"transc_dt":"2021-03-09 07:28:43"}
+
+
+
+spark-submit \
+--class classReadFromKafka \
+--master local[2] \
+--conf spark.ui.port=0 \
+--conf spark.sql.warehouse.dir=/user/itv009314/warehouse \
+--jars "real_time_project/HBase_Jars-master/*,real_time_project/DistanceFinderJar/*,real_time_project/kafka-spark_dep/*" \
+real_time_project/streaming_thin.jar
+

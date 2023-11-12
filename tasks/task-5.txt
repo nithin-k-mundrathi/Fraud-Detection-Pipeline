@@ -1,0 +1,68 @@
+==================task-5=================================
+ hadoop fs -mkdir projectDataitv009314/card_transactions
+
+use itv009314project
+
+create external table if not exists card_transactions (
+card_id bigint,
+member_id bigint,
+amount float,
+postcode int,
+pos_id bigint,
+transaction_dt timestamp,
+status string
+)
+row format delimited fields terminated by ','
+stored as textfile
+location '/user/itv009314/project_input/airflow/card_transactions/';
+
+
+
+
+create table card_transactions_bucketed
+(
+cardid_txnts string,
+card_id bigint,
+member_id bigint,
+amount float,
+postcode int,
+pos_id bigint,
+transaction_dt timestamp,
+status string
+)
+CLUSTERED by (card_id) into 8 buckets
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH
+SERDEPROPERTIES("hbase.columns.mapping"=":key,trans_data:card_id,trans_data:mem
+ber_id,trans_data:amount,trans_data:postcode,trans_data:pos_id,trans_data:transaction_dt,
+trans_data:Status")
+TBLPROPERTIES ("hbase.table.name" = "card_transactions_itv009314");
+
+
+create table card_lookup(
+member_id bigint,
+card_id bigint ,
+ucl float ,
+score float,
+last_txn_time timestamp,
+last_txn_zip string
+)CLUSTERED by (card_id) into 8 buckets
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH
+SERDEPROPERTIES("hbase.columns.mapping"=":key,lkp_data:member_id,lkp_data:ucl,lkp_data:score, lkp_data:last_txn_time,lkp_data:last_txn_zip")
+TBLPROPERTIES ("hbase.table.name" = "card_lookup_itv009314");
+
+create table card_lookup_airflow(
+member_id bigint,
+card_id bigint ,
+ucl float ,
+score float,
+last_txn_time timestamp,
+last_txn_zip string
+)CLUSTERED by (card_id) into 8 buckets
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH
+SERDEPROPERTIES("hbase.columns.mapping"=":key,lkp_data:member_id,lkp_data:ucl,lkp_data:score, lkp_data:last_txn_time,lkp_data:last_txn_zip")
+TBLPROPERTIES ("hbase.table.name" = "card_lookup_itv009314_airflow");
+
+

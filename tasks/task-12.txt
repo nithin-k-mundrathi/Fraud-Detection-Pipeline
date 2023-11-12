@@ -1,0 +1,139 @@
+ls
+llstask-12
+
+
+/home/cloudera/Desktop/shared1/eclipse
+
+/home/cloudera/Downloads
+
+cp -R /home/cloudera/Desktop/shared1/eclipse /home/cloudera/Downloads
+
+cp -R /home/cloudera/Desktop/projectFolder/jdk1.7.0_80 /home/cloudera/Downloads
+
+cp /home/cloudera/Downloads/submit_jar.jar /home/cloudera/Desktop/newShared
+
+cp /home/cloudera/Downloads/airflow_submit.jar /home/cloudera/Desktop/newSharedFolder
+
+cp -R /home/cloudera/Desktop/projectFolder/hbase_jars /home/cloudera/Desktop/project_input_local
+
+cp /home/cloudera/Downloads/streaming_thin.jar /home/cloudera/Desktop/project_input_local
+
+cp /home/cloudera/Desktop/shareFolder/eclipse_scala /home/cloudera/Downloads
+
+
+cp -R /home/cloudera/Desktop/shareFolder/eclipse_scala /home/cloudera/Downloads
+
+
+Do everything in DOWNLOADS FOLDER ALWAYS
+
+./eclipse -clean
+
+
+
+spark-submit \
+--class sparkHiveHbaseInt2 \
+--master local[2] \
+--conf spark.ui.port=0 \
+--conf spark.sql.warehouse.dir=/user/itv009314/warehouse \
+--jars real_time_project/HBase_Jars-master/* \
+real_time_project/streaming_thin.jar
+
+
+spark-shell --master local[2] --conf spark.ui.port=0 spark.sql.warehouse.dir=user/itv009314/warehouse --jars "real_time_project/HBase_Jars-master/*"
+
+import org.apache.spark.sql.{ Row, SaveMode, SparkSession }
+import org.apache.log4j.Logger
+import org.apache.log4j.Level
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.hbase.client.{
+  HBaseAdmin,
+  Result,
+  Put,
+  HTable,
+  ConnectionFactory,
+  Connection,
+  Get,
+  Scan
+}
+import org.apache.hadoop.hbase.HBaseConfiguration
+import org.apache.hadoop.hbase.TableName
+import org.apache.hadoop.hbase.util.Bytes
+
+
+val sparkConf = new SparkConf()
+sparkConf.setAppName("Credit_Card_Fraud_Detection")
+sparkConf.set("hive.metastore.warehouse.dir", "thrift://localhost:9083")
+val spark = SparkSession.builder().config(sparkConf).enableHiveSupport().getOrCreate()
+
+val conf = HBaseConfiguration.create()
+
+conf.set("hbase.zookeeper.quorum", "m01.itversity.com,m02.itversity.com,w01.itversity.com,g01.itversity.com")
+conf.set("hbase.zookeeper.property.clientPort", "2181")
+val connection: Connection = ConnectionFactory.createConnection(conf)
+val tableName = connection.getTable(TableName.valueOf("card_lookup_itv009314"))
+import spark.implicits._
+import spark.sql
+
+val df_ucl = sql("""
+			with cte_rownum as
+			(
+			select card_id,amount,member_id,transaction_dt,
+			first_value(postcode) over(partition by card_id order by transaction_dt desc) as postcode,
+			row_number() over(partition by card_id order by transaction_dt desc) rownum
+			from itv009314HiveDB.card_transactions
+			)
+			select card_id,member_id,
+			round((avg(amount)+ 3* max(std)),0) as ucl ,
+			max(score) score,
+			max(transaction_dt) as last_txn_time,
+			max(Postcode)as last_txn_zip	
+			from
+			(	select
+			card_id,amount,
+			c.member_id,
+			m.score,
+			c.transaction_dt,
+			Postcode,
+			STDDEV (amount) over(partition by card_id order by (select 1)  desc) std
+			from cte_rownum c
+			inner join itv009314HiveDB.member_score_bucketed m on c.member_id=m.member_id 
+			where rownum<=10
+			)a
+			group by card_id,member_id
+			""")
+
+val df = df_ucl.select("card_id", "member_id", "ucl", "score", "last_txn_time", "last_txn_zip")
+
+
+val arr = df.collect()
+
+
+for( x <- arr){
+    var cardId:Long = x(0).toString.toLong
+  	var memberId:Long = x(1).toString.toLong
+  	var ucl:Double  = x(2).toString.toDouble
+  	var score:Float  = x(3).toString.toFloat
+  	var lastTxnTime:String = x(4).toString
+  	var lastTxnZip:String = x(5).toString
+    val row = new Put(Bytes.toBytes(cardId))
+    row.addColumn(Bytes.toBytes("lkp_data"),Bytes.toBytes("member_id"),Bytes.toBytes(memberId))
+    row.addColumn(Bytes.toBytes("lkp_data"),Bytes.toBytes("ucl"),Bytes.toBytes(ucl))
+    row.addColumn(Bytes.toBytes("lkp_data"),Bytes.toBytes("score"),Bytes.toBytes(score))
+    row.addColumn(Bytes.toBytes("lkp_data"),Bytes.toBytes("last_txn_time"),Bytes.toBytes(lastTxnTime))
+    row.addColumn(Bytes.toBytes("lkp_data"),Bytes.toBytes("last_txn_zip"),Bytes.toBytes(lastTxnZip))   
+    tableName.put(row) 
+    }
+
+AIRFLOW
+
+HBASE NAME - card_lookup_itv009314_airflow
+
+mount -t vboxsf foldername foldername
+
+./spark-submit --class sparkHiveHbaseInt2 --master local[2] --conf spark.ui.port=0 --conf spark.sql.warehouse.dir=/user/itv009314/warehouse --jars "real_time_project/HBase_Jars-master/*" real_time_project/airflow_submit.jar
+
+
+
+

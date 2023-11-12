@@ -1,0 +1,12 @@
+===============task-11================================
+
+sqoop-job \
+--create MemberScoreJob \
+-- import \
+--connect "jdbc:mysql://ms.itversity.com:3306/retail_export" \
+--username retail_user \
+--password itversity \
+--table itv009314_member_score \
+-m 1 \
+--target-dir /user/itv009314/projectDataitv009314/member_score \
+--delete-target-dir

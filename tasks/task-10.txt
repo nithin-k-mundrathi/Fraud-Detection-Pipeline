@@ -1,0 +1,12 @@
+sqoop-job \
+--create MemberDetailsJob \
+-- import \
+--connect "jdbc:mysql://ms.itversity.com:3306/retail_export" \
+--username retail_user \
+--password itversity \
+--table itv009314_member_details_varchar \
+-m 1 \
+--warehouse-dir /user/itv009314/projectDataitv009314/member_details \
+--incremental append \
+--check-column member_id \
+--last-value 0

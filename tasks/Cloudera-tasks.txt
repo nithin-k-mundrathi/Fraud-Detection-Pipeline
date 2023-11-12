@@ -1,0 +1,177 @@
+=================CLOUDERA========================================
+
+mysql -u root -p
+
+create database sqlProjectDatabase;
+use sqlProjectDatabase;
+
+create table cardTransactions_stg(
+card_id bigint,
+member_id bigint,
+amount int,
+postcode int,
+pos_id bigint,
+transaction_dt varchar(255),
+status varchar(50));
+
+create table cardTransactions(
+card_id bigint,
+member_id bigint,
+amount int,
+postcode int,
+pos_id bigint,
+transaction_dt varchar(255),
+status varchar(50),
+PRIMARY KEY(card_id, transaction_dt));
+
+create table member_details(
+card_id bigint,
+member_id bigint,
+member_joining_dt varchar(255) ,
+card_purchase_dt varchar(255) ,
+country varchar(255),
+city varchar(255),
+score float)
+;
+
+create table member_score(
+member_id bigint,
+score float
+);
+
+
+
+LOAD DATA INFILE '/home/cloudera/Desktop/projectFolder/memberscore.csv' 
+INTO TABLE member_score 
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+
+LOAD DATA INFILE '/home/cloudera/Desktop/projectFolder/card_transactions_recent.csv' 
+INTO TABLE cardTransactions_stg
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+
+LOAD DATA INFILE '/home/cloudera/Desktop/projectFolder/cardmembers.csv'
+INTO TABLE member_details
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+
+Alter ignore table cardTransactions_stg Add unique index idx_card_txns(card_id,transaction_dt);
+
+select card_id,transaction_dt,count(*) from cardTransactions_stg group by card_id,transaction_dt having count(*) >1;
+
+alter table cardTransactions_stg drop index idx_card_txns;
+
+insert into cardTransactions select card_id,member_id,amount,postcode,pos_id,STR_TO_DATE(transaction_dt,'%d-%m-%Y%H:%i:%s'),status from cardTransactions_stg;
+
+================member-tables;=======================
+
+hadoop fs -mkdir project_input_data/member_score
+hadoop fs -mkdir project_input_data/member_details
+
+hdfs fsck /user/cloudera -files -blocks -locations
+
+SET HIVE.ENFORCE.BUCKETING=TRUE;
+
+set hive.metastore.warehouse.dir=/user/cloudera/warehouse;
+
+==========HIVE======================================
+
+use itv009314HiveDB;
+
+create external table if not exists member_score(
+member_id string,
+score float)
+row format delimited fields terminated by ','
+stored as textfile
+location '/user/cloudera/project_input_data/member_score/';
+
+create external table if not exists member_details(
+card_id bigint,
+member_id bigint,
+member_joining_dt timestamp ,
+card_purchase_dt timestamp ,
+country string,
+city string,
+score float)
+row format delimited fields terminated by ','
+stored as textfile
+location '/user/cloudera/project_input_data/member_details/member_details';
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/sqlProjectDatabase" \
+--username root \
+--password cloudera \
+--table member_score \
+--target-dir /user/cloudera/project_input_data/member_score \
+-m 1 \
+--delete-target-dir
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/sqlProjectDatabase" \
+--username root \
+--password cloudera \
+--table member_details \
+-m 1 \
+--warehouse-dir /user/cloudera/project_input_data/member_details \
+--incremental append \
+--check-column member_id \
+--last-value 0
+
+sqoop import \
+--connect "jdbc:mysql://quickstart.cloudera:3306/sqlProjectDatabase" \
+--username root \
+--password cloudera \
+--table cardTransactions \
+-m 1 \
+--target-dir /user/cloudera/project_input_data/card_transactions \
+--delete-target-dir
+
+create external table if not exists card_transactions (
+card_id bigint,
+member_id bigint,
+amount float,
+postcode int,
+pos_id bigint,
+transaction_dt timestamp,
+status string
+)
+row format delimited fields terminated by ','
+stored as textfile
+location '/user/cloudera/project_input_data/card_transactions/';
+
+create table card_transactions_bucketed(
+cardid_txnts string,
+card_id bigint,
+member_id bigint,
+amount float,
+postcode int,
+pos_id bigint,
+transaction_dt timestamp,
+status string)
+CLUSTERED by (card_id) into 8 buckets
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH
+SERDEPROPERTIES("hbase.columns.mapping"=":key,trans_data:card_id,trans_data:member_id,trans_data:amount,trans_data:postcode,trans_data:pos_id,trans_data:transaction_dt,trans_data:Status") TBLPROPERTIES ("hbase.table.name" = "card_transactions");
+
+
+create table card_lookup(
+member_id bigint,
+card_id bigint ,
+ucl float ,
+score float,
+last_txn_time timestamp,
+last_txn_zip string)
+CLUSTERED by (card_id) into 8 buckets
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH SERDEPROPERTIES("hbase.columns.mapping"=":key,lkp_data:member_id,lkp_data:ucl,lkp_data:score, lkp_data:last_txn_time,lkp_data:last_txn_zip") TBLPROPERTIES ("hbase.table.name" = "card_lookup");
+
+insert into table card_transactions_bucketed select concat_ws('~',cast(card_id as string),cast(transaction_dt as string)) as cardid_txnts,card_id,member_id,amount,postcode,pos_id,transaction_dt,status from card_transactions
+
+
+
+
+/

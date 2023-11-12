@@ -1,0 +1,14 @@
+====================task-9========================================
+
+Insert into table card_transactions_bucketed
+select concat_ws('~',cast(card_id as string),cast(transaction_dt as string)) as cardid_txnts,
+card_id,
+member_id,
+amount,
+postcode,
+pos_id,
+transaction_dt,
+status
+from card_transactions;
+
+

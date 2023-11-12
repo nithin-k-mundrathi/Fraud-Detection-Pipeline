@@ -1,0 +1,78 @@
+=============TASK-4+===============================
+SET HIVE.ENFORCE.BUCKETING=TRUE;
+set hive.metastore.warehouse.dir=/user/itv009314/warehouse;
+set hive.metastore.warehouse.dir = /user/itv009314/itv009314warehouse
+create database itv009314project;
+use itv009314project;
+
+create database itv009314HiveDB;
+use itv009314HiveDB;
+
+--Create hive tables-------------------------------
+
+use itv009314HiveDB;
+
+create external table if not exists member_score(
+member_id string,
+score float)
+row format delimited fields terminated by ','
+stored as textfile
+location '/user/itv009314/projectDataitv009314/member_score/';
+
+create external table if not exists member_details(
+card_id bigint,
+member_id bigint,
+member_joining_dt timestamp ,
+card_purchase_dt timestamp ,
+country string,
+city string,
+score float)
+row format delimited fields terminated by ','
+stored as textfile
+location '/user/itv009314/projectDataitv009314/member_details/itv009314_member_details_varchar';
+
+----------------------------------------------------------------------------
+create external table if not exists member_score(
+member_id string,
+score float)
+row format delimited fields terminated by ','
+stored as textfile
+location '/user/itv009314/project_input/airflow/member_score/';
+
+
+create external table if not exists member_details(
+card_id bigint,
+member_id bigint,
+member_joining_dt timestamp ,
+card_purchase_dt timestamp ,
+country string,
+city string,
+score float)
+row format delimited fields terminated by ','
+stored as textfile
+location '/user/itv009314/project_input/airflow/member_details/member_details';
+--------------------------------------------------------------------------
+
+create table if not exists member_score_bucketed
+(
+member_id string,
+score float
+)
+CLUSTERED BY (member_id) into 8 buckets;
+
+create table if not exists member_details_bucketed
+(
+card_id bigint,
+member_id bigint,
+member_joining_dt timestamp ,
+card_purchase_dt timestamp ,
+country string,
+city string,
+score float
+)
+CLUSTERED BY (card_id) into 8 buckets;
+
+
+insert into table member_details_bucketed select * from member_details;
+
+insert into table member_score_bucketed select * from member_score;

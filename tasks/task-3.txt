@@ -1,0 +1,35 @@
+=================task-3====================
+-------Staging table-----------------------
+sqoop export \
+--connect jdbc:mysql://${DBSERVER}/${DBNAME} \
+--username ${DBUSER} \
+--password itversity \
+--staging-table ${DBSTGTABLE} \
+--table ${DBTABLE} \
+--export-dir /user/itv009314/projectDataitv009314/card_transactions_recent.csv \
+-m 1 \
+--fields-terminated-by ','
+
+
+-------SQOOP EXPORT TO AWS-----------------------
+sqoop export \
+--connect jdbc:mysql://awstestdatabase.cnd6wmhsnbj0.eu-north-1.rds.amazonaws.com:3306/projectInputDB \
+--username adminuser \
+--password adminpassword \
+--staging-table cardTransactions_stg \
+--table cardTransactions \
+--export-dir /user/itv009314/project_input/card_transactions_recent.csv \
+-m 1 \
+--fields-terminated-by ','
+
+-------SQOOP EXPORT TO AWS_AIRFLOW-----------------------
+sqoop export \
+-Dhadoop.security.credential.provider.path=jceks://hdfs/user/itv009314/aws.db.password.jceks \
+--connect jdbc:mysql://${DBSERVER}/${DBNAME} \
+--username ${DBUSER} \
+--password-alias aws.db.password \
+--staging-table ${DBSTGTABLE} \
+--table ${DBTABLE} \
+--export-dir /user/itv009314/project_input/card_transactions_recent.csv \
+-m 1 \
+--fields-terminated-by ','

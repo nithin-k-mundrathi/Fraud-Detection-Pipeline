@@ -1,0 +1,17 @@
+DB instance identifier
+awstestdatabase
+
+initaldatabase
+
+Master username
+adminuser
+
+
+Master Password
+adminpassword
+
+
+mysql -h awstestdatabase.cnd6wmhsnbj0.eu-north-1.rds.amazonaws.com -P 3306 -u adminuser -p
+
+
+hadoop credential create aws.db.password -provider jceks://hdfs/user/itv009314/aws.db.password.jceks

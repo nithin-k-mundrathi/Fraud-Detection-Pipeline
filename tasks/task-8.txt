@@ -1,0 +1,55 @@
+==================task-8========================
+create table member_details(
+card_id bigint,
+member_id bigint,
+member_joining_dt varchar(255) ,
+card_purchase_dt varchar(255) ,
+country varchar(255),
+city varchar(255),
+score float
+);
+
+
+sqoop export \
+--connect "jdbc:mysql://ms.itversity.com:3306/retail_export" \
+--username retail_user \
+--password itversity \
+--table itv009314_member_details_varchar \
+--export-dir /user/itv009314/projectDataitv009314/cardmembers.csv \
+-m 1 \
+--fields-terminated-by ','
+
+sqoop export \
+-Dhadoop.security.credential.provider.path=jceks://hdfs/user/itv009314/aws.db.password.jceks \
+--connect jdbc:mysql://awstestdatabase.cnd6wmhsnbj0.eu-north-1.rds.amazonaws.com:3306/projectInputDB \
+--username adminuser \
+--password-alias aws.db.password \
+--table member_details \
+--export-dir /user/itv009314/project_input/cardmembers.csv \
+-m 1 \
+--fields-terminated-by ','
+
+
+sqoop-import \
+--connect "jdbc:mysql://${DBSERVER}/${DBNAME}" \
+--username ${DBUSER} \
+--password itversity \
+--table ${DBTABLE} \
+--warehouse-dir /user/itv009314/projectDataitv009314/member_details \
+--incremental append \
+--check-column member_id \
+--last-value 0
+
+
+sqoop-job \
+--create MemberDetailsJob \
+-- import \
+--connect "jdbc:mysql://ms.itversity.com:3306/retail_export" \
+--username retail_user \
+--password itversity \
+--table itv009314_member_details_varchar \
+-m 1 \
+--warehouse-dir /user/itv009314/projectDataitv009314/member_details \
+--incremental append \
+--check-column member_id \
+--last-value 0

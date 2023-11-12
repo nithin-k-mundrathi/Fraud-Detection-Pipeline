@@ -1,0 +1,56 @@
+=================task-7==========================
+create table member_score(
+member_id bigint,
+score float
+);
+
+create table member_details(
+card_id bigint,
+member_id bigint,
+member_joining_dt varchar(255) ,
+card_purchase_dt varchar(255) ,
+country varchar(255),
+city varchar(255),
+score float)
+;
+
+
+----LOCAL to MYSQL------------------
+sqoop export \
+--connect "jdbc:mysql://ms.itversity.com:3306/retail_export" \
+--username retail_user \
+--password itversity \
+--table itv009314_member_score \
+--export-dir /user/itv009314/projectDataitv009314/memberscore.csv \
+--fields-terminated-by ','
+
+sqoop export \
+-Dhadoop.security.credential.provider.path=jceks://hdfs/user/itv009314/aws.db.password.jceks \
+--connect jdbc:mysql://awstestdatabase.cnd6wmhsnbj0.eu-north-1.rds.amazonaws.com:3306/projectInputDB \
+--username adminuser \
+--password-alias aws.db.password \
+--table member_score \
+--export-dir /user/itv009314/project_input/memberscore.csv \
+-m 1 \
+--fields-terminated-by ','
+
+-----MYSQL-TO-HDFS-------------------
+sqoop-import \
+--connect "jdbc:mysql://${DBSERVER}/${DBNAME}" \
+--username ${DBUSER} \
+--password itversity \
+--table ${DBTABLE} \
+--target-dir /user/itv009314/projectDataitv009314/member_score \
+-m 1 \
+--delete-target-dir
+
+sqoop-job \
+--create MemberScoreJob \
+-- import \
+--connect "jdbc:mysql://ms.itversity.com:3306/retail_export" \
+--username retail_user \
+--password itversity \
+--table itv009314_member_score \
+-m 1 \
+--target-dir /user/itv009314/projectDataitv009314/member_score \
+--delete-target-dir

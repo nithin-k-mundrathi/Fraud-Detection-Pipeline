@@ -1,0 +1,130 @@
+
+===============Task-2========================
+
+mysql -u retail_user -p -h ms.itversity.com -P 3306
+
+mysql -h awstestdatabase.cnd6wmhsnbj0.eu-north-1.rds.amazonaws.com -P 3306 -u adminuser -p
+
+use projectInputDB;
+
+jdbc:mysql://ms.itversity.com:3306
+password itversity
+use retail_export;
+
+-- Change permissions to file in Itversity
+chmod 777 sqoop_import_member_score.sh
+chmod 777 sqoop_import_member_details.sh
+chmod 777 sqoop_export_card_txns.sh
+chmod 777 sqoop_import_card_txns.sh
+
+
+create table cardTransactions_stg(
+card_id bigint,
+member_id bigint,
+amount int,
+postcode int,
+pos_id bigint,
+transaction_dt varchar(255),
+status varchar(50));
+
+create table cardTransactions(
+card_id bigint,
+member_id bigint,
+amount int,
+postcode int,
+pos_id bigint,
+transaction_dt varchar(255),
+status varchar(50),
+PRIMARY KEY(card_id, transaction_dt));
+
+-------SQOOP EXPORT TO retailDB-----------------------
+sqoop export \
+--connect jdbc:mysql://${DBSERVER}/${DBNAME} \
+--username ${DBUSER} \
+--password itversity \
+--staging-table ${DBSTGTABLE} \
+--table ${DBTABLE} \
+--export-dir project_input_hdfs/card_transactions_recent.csv \
+-m 1 \
+--fields-terminated-by ','
+
+
+select card_id,transaction_dt,count(*) from projectitv009314CardTransactions_stg group by
+card_id,transaction_dt having count(*) >1;
+
+Alter Ignore table cardTransactions_stg Add unique index idx_card_txns(card_id,transaction_dt);
+
+
+insert into projectitv009314CardTransactions
+select
+card_id,member_id,amount,postcode,pos_id,STR_TO_DATE(transaction_dt,'%d-%m-%Y
+%H:%i:%s'),status from projectitv009314CardTransactions_stg;
+
+
+insert into cardTransactions 
+SELECT card_id,member_id,amount,postcode,pos_id,STR_TO_DATE(transaction_dt,'%d-%m-%Y
+%H:%i:%s'),status FROM (
+    SELECT *, IF(@prev <> transaction_dt + card_id, @rn:=0,@rn), @prev:=transaction_dt + card_id, @rn:=@rn+1 AS rn
+    FROM cardTransactions_stg, (SELECT @rn:=0)rn, (SELECT @prev:='')prev
+    ORDER BY transaction_dt ASC, card_id DESC
+)t WHERE rn <= 1;
+
+
+select card_id,transaction_dt,count(*) from (
+SELECT card_id,member_id,amount,postcode,pos_id,transaction_dt,status FROM (
+    SELECT *, IF(@prev <> transaction_dt + card_id, @rn:=0,@rn), @prev:=transaction_dt + card_id, @rn:=@rn+1 AS rn
+    FROM cardTransactions_stg, (SELECT @rn:=0)rn, (SELECT @prev:='')prev
+    ORDER BY transaction_dt ASC, card_id DESC
+)t WHERE rn <= 1
+)b group by card_id,transaction_dt order by count(*) DESC;
+
+
+=================CLOUDERA========================================
+
+mysql -u root -p
+
+create database sqlProjectDatabase;
+use sqlProjectDatabase;
+
+create table cardTransactions_stg(
+card_id bigint,
+member_id bigint,
+amount int,
+postcode int,
+pos_id bigint,
+transaction_dt varchar(255),
+status varchar(50));
+
+create table cardTransactions(
+card_id bigint,
+member_id bigint,
+amount int,
+postcode int,
+pos_id bigint,
+transaction_dt varchar(255),
+status varchar(50),
+PRIMARY KEY(card_id, transaction_dt));
+
+
+sqoop export \
+--connect "jdbc:mysql://quickstart.cloudera:3306/sqlProjectDatabase" \
+--username root \
+--password cloudera \
+--table  \
+--export-dir /user/itv009314/projectDataitv009314/memberscore.csv \
+--fields-terminated-by ','
+
+
+LOAD DATA INFILE '/home/cloudera/Desktop/projectFolder/memberscore.csv' 
+INTO TABLE member_score 
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+
+LOAD DATA INFILE '/home/cloudera/Desktop/projectFolder/card_transactions_recent.csv' 
+INTO TABLE cardTransactions_stg
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+
+
